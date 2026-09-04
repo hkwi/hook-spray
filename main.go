@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	ulid "github.com/oklog/ulid/v2"
-	"golang.org/x/exp/slog"
 	"net/http"
-	"net/url"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/exp/slog"
 )
 
 type ss []string
@@ -30,50 +30,11 @@ func main() {
 	flag.Parse()
 	slog.Info("config", "dests", dests)
 
-	http.HandleFunc("/hook", func(w http.ResponseWriter, r *http.Request) {
-		xid := ulid.Make()
-		slog.Info(r.Method, "xid", xid)
-		defer r.Body.Close()
-		if r.Method == "POST" {
-			contentType := r.Header.Get("Content-Type")
-			buf := bytes.Buffer{}
-			buf.ReadFrom(r.Body)
-			defer r.Body.Close()
+	metrics := newRelayMetrics(prometheus.DefaultRegisterer)
+	mux := http.NewServeMux()
+	mux.Handle("/hook", newRelayHandler(dests, *allowGet, http.DefaultClient, metrics))
+	mux.Handle("/metrics", promhttp.Handler())
 
-			for _, dest := range dests {
-				if resp, err := http.Post(dest, contentType, bytes.NewReader(buf.Bytes())); err != nil {
-					slog.Error("call failed", "xid", xid, "err", err)
-				} else {
-					slog.Info(resp.Status, "xid", xid, "dest", dest)
-					defer resp.Body.Close()
-				}
-			}
-		} else if r.Method == "GET" && *allowGet {
-			for _, dest := range dests {
-				if u, err := url.Parse(dest); err != nil {
-					slog.Error("URL error", "xid", xid, "err", err)
-				} else if m, err := url.ParseQuery(u.RawQuery); err != nil {
-					slog.Error("URL failed", "xid", xid, "err", err)
-				} else {
-					for k, vs := range r.Form {
-						for _, v := range vs {
-							m.Add(k, v)
-						}
-					}
-					u.RawQuery = m.Encode()
-					if resp, err := http.Get(u.String()); err != nil {
-						slog.Error("call failed", "xid", xid, "err", err)
-					} else {
-						slog.Info("ok", "xid", xid, "dest", dest, "status", resp.Status)
-						defer resp.Body.Close()
-					}
-				}
-			}
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "Unsupported method")
-		}
-	})
 	fmt.Printf("Relay to %v", dests)
-	http.ListenAndServe(*addr, nil)
+	http.ListenAndServe(*addr, mux)
 }

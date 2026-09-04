@@ -26,4 +26,16 @@ Example:
 hook-spray -port=:8080 -dest=http://webhook1 -dest=http://webhook2
 ```
 
+## Metrics
+
+Prometheus metrics are available at `/metrics`. In addition to the standard Go
+runtime and process metrics, hook-spray exports:
+
+- `hook_spray_in_flight_requests`
+- `hook_spray_requests_total`
+- `hook_spray_request_body_bytes`
+- `hook_spray_request_body_read_duration_seconds`
+- `hook_spray_request_duration_seconds`
+- `hook_spray_upstream_requests_total`
+- `hook_spray_upstream_request_duration_seconds`
 
