@@ -30,7 +30,7 @@ func TestRelayPostMetrics(t *testing.T) {
 
 	registry := prometheus.NewRegistry()
 	metrics := newRelayMetrics(registry)
-	handler := newRelayHandler([]string{"http://upstream.example/update"}, false, client, metrics)
+	handler := newRelayHandler([]string{"http://upstream.example/update"}, false, false, client, metrics)
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/hook", strings.NewReader("payload"))
 	handler.ServeHTTP(recorder, request)
@@ -72,7 +72,7 @@ func (roundTrip roundTripFunc) RoundTrip(request *http.Request) (*http.Response,
 func TestUnsupportedMethodMetrics(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	metrics := newRelayMetrics(registry)
-	handler := newRelayHandler(nil, false, http.DefaultClient, metrics)
+	handler := newRelayHandler(nil, false, false, http.DefaultClient, metrics)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPut, "/hook", nil))
 
