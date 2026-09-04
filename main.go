@@ -28,6 +28,7 @@ func main() {
 	addr := flag.String("listen", ":8080", "Addr to listen")
 	allowGet := flag.Bool("allow-get", false, "normal webhook use POST")
 	entry := flag.String("entry", "/hook", "URL path to receive webhook requests")
+	debug := flag.Bool("debug", false, "Log request and response bodies when a destination returns HTTP 500")
 	var dests ss
 	flag.Var(&dests, "dest", "URL to send to")
 	flag.Parse()
@@ -36,7 +37,7 @@ func main() {
 	metrics := newRelayMetrics(prometheus.DefaultRegisterer)
 	mux, err := newServeMux(
 		*entry,
-		newRelayHandler(dests, *allowGet, http.DefaultClient, metrics),
+		newRelayHandler(dests, *allowGet, *debug, http.DefaultClient, metrics),
 		promhttp.Handler(),
 	)
 	if err != nil {

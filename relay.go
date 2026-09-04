@@ -16,14 +16,16 @@ import (
 type relayHandler struct {
 	dests    []string
 	allowGet bool
+	debug    bool
 	client   *http.Client
 	metrics  *relayMetrics
 }
 
-func newRelayHandler(dests []string, allowGet bool, client *http.Client, metrics *relayMetrics) http.Handler {
+func newRelayHandler(dests []string, allowGet, debug bool, client *http.Client, metrics *relayMetrics) http.Handler {
 	return &relayHandler{
 		dests:    dests,
 		allowGet: allowGet,
+		debug:    debug,
 		client:   client,
 		metrics:  metrics,
 	}
@@ -79,6 +81,15 @@ func (handler *relayHandler) relayPost(xid string, r *http.Request) {
 
 		handler.metrics.observeUpstream(metricDest, strconv.Itoa(resp.StatusCode), elapsed)
 		slog.Info(resp.Status, "xid", xid, "dest", dest)
+		if resp.StatusCode == http.StatusInternalServerError && handler.debug {
+			slog.Info("upstream request body", "xid", xid, "dest", dest, "request_body", buf.String())
+			responseBody, err := io.ReadAll(resp.Body)
+			if err != nil {
+				slog.Error("upstream response body read failed", "xid", xid, "dest", dest, "err", err)
+			} else {
+				slog.Info("upstream response body", "xid", xid, "dest", dest, "response_body", string(responseBody))
+			}
+		}
 		defer resp.Body.Close()
 	}
 }

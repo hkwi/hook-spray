@@ -40,3 +40,9 @@ runtime and process metrics, hook-spray exports:
 - `hook_spray_request_duration_seconds`
 - `hook_spray_upstream_requests_total`
 - `hook_spray_upstream_request_duration_seconds`
+
+## Debugging upstream errors
+
+Set `-debug` to log the relayed request body and the destination response body
+when a destination returns HTTP 500. These bodies may contain sensitive data or
+be large, so enable this only while diagnosing an upstream failure.
